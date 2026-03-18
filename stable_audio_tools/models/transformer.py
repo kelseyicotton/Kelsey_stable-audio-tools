@@ -801,6 +801,7 @@ class ContinuousTransformer(nn.Module):
         return_info = False,
         use_checkpointing = True,
         exit_layer_ix = None,
+        per_pos_cond = None, #kelsey add
         **kwargs
     ):
         batch, seq, device = *x.shape[:2], x.device
@@ -813,6 +814,22 @@ class ContinuousTransformer(nn.Module):
         }
 
         x = self.project_in(x)
+
+        if per_pos_cond is not None: #kelsey add
+            # per_pos_cond: [B, T_cond, 2*dim] — per-position scale+shift
+            # Interpolate to match audio sequence length if needed
+            T = x.shape[1]
+            if per_pos_cond.shape[1] != T:
+                film = F.interpolate(
+                    per_pos_cond.permute(0, 2, 1).float(),
+                    size=T,
+                    mode='linear',
+                    align_corners=False,
+                ).permute(0, 2, 1).to(x.dtype)
+            else:
+                film = per_pos_cond.to(x.dtype)
+            scale, shift = film.chunk(2, dim=-1)  # each [B, T, dim]
+            x = x * (1 + scale) + shift
 
         if prepend_embeds is not None:
             prepend_length, prepend_dim = prepend_embeds.shape[1:]

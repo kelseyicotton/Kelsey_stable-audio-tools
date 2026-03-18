@@ -123,9 +123,9 @@ class DiffusionTransformer(nn.Module):
         nn.init.zeros_(self.postprocess_conv.weight)
 
     def _forward(
-        self, 
-        x, 
-        t, 
+        self, #kelsey add
+        x, #kelsey add
+        t, #kelsey add
         mask=None,
         cross_attn_cond=None,
         cross_attn_cond_mask=None,
@@ -133,6 +133,7 @@ class DiffusionTransformer(nn.Module):
         global_embed=None,
         prepend_cond=None,
         prepend_cond_mask=None,
+        per_pos_cond=None, #kelsey add
         return_info=False,
         exit_layer_ix=None,
         **kwargs):
@@ -204,7 +205,7 @@ class DiffusionTransformer(nn.Module):
 
         if self.transformer_type == "continuous_transformer":
             # Masks not currently implemented for continuous transformer
-            output = self.transformer(x, prepend_embeds=prepend_inputs, context=cross_attn_cond, return_info=return_info, exit_layer_ix=exit_layer_ix, **extra_args, **kwargs)
+            output = self.transformer(x, prepend_embeds=prepend_inputs, context=cross_attn_cond, return_info=return_info, exit_layer_ix=exit_layer_ix, per_pos_cond=per_pos_cond, **extra_args, **kwargs) #kelsey add
 
             if return_info:
                 output, info = output
@@ -229,9 +230,9 @@ class DiffusionTransformer(nn.Module):
         return output
 
     def forward(
-        self, 
-        x, 
-        t, 
+        self, #kelsey add
+        x, #kelsey add
+        t, #kelsey add
         cross_attn_cond=None,
         cross_attn_cond_mask=None,
         negative_cross_attn_cond=None,
@@ -241,6 +242,7 @@ class DiffusionTransformer(nn.Module):
         negative_global_embed=None,
         prepend_cond=None,
         prepend_cond_mask=None,
+        per_pos_cond=None, #kelsey add
         cfg_scale=1.0,
         cfg_dropout_prob=0.0,
         cfg_interval = (0, 1),
@@ -291,12 +293,13 @@ class DiffusionTransformer(nn.Module):
             return self._forward(
                 x,
                 t,
-                cross_attn_cond=cross_attn_cond, 
-                cross_attn_cond_mask=cross_attn_cond_mask, 
-                input_concat_cond=input_concat_cond, 
-                global_embed=global_embed, 
-                prepend_cond=prepend_cond, 
+                cross_attn_cond=cross_attn_cond, #kelsey add
+                cross_attn_cond_mask=cross_attn_cond_mask, #kelsey add
+                input_concat_cond=input_concat_cond, #kelsey add
+                global_embed=global_embed, #kelsey add
+                prepend_cond=prepend_cond, #kelsey add
                 prepend_cond_mask=prepend_cond_mask,
+                per_pos_cond=per_pos_cond, #kelsey add
                 mask=mask,
                 return_info=return_info,
                 exit_layer_ix=exit_layer_ix,
@@ -380,18 +383,24 @@ class DiffusionTransformer(nn.Module):
                 batch_masks = torch.cat([mask, mask], dim=0)
             else:
                 batch_masks = None
-            
+
+            if per_pos_cond is not None: #kelsey add
+                batch_per_pos_cond = torch.cat([per_pos_cond, torch.zeros_like(per_pos_cond)], dim=0)
+            else: #kelsey add
+                batch_per_pos_cond = None
+
             batch_output = self._forward(
-                batch_inputs, 
-                batch_timestep, 
-                cross_attn_cond=batch_cond, 
-                cross_attn_cond_mask=batch_cond_masks, 
-                mask = batch_masks, 
-                input_concat_cond=batch_input_concat_cond, 
-                global_embed = batch_global_cond,
-                prepend_cond = batch_prepend_cond,
-                prepend_cond_mask = batch_prepend_cond_mask,
-                return_info = return_info,
+                batch_inputs, #kelsey add
+                batch_timestep, #kelsey add
+                cross_attn_cond=batch_cond,#kelsey add
+                cross_attn_cond_mask=batch_cond_masks, #kelsey add
+                mask=batch_masks, #kelsey add
+                input_concat_cond=batch_input_concat_cond,#kelsey add
+                global_embed=batch_global_cond,#kelsey add
+                prepend_cond=batch_prepend_cond,#kelsey add
+                prepend_cond_mask=batch_prepend_cond_mask,#kelsey add
+                per_pos_cond=batch_per_pos_cond,#kelsey add
+                return_info=return_info, #kelsey add
                 **kwargs)
 
             if return_info:
@@ -419,12 +428,13 @@ class DiffusionTransformer(nn.Module):
             return self._forward(
                 x,
                 t,
-                cross_attn_cond=cross_attn_cond, 
-                cross_attn_cond_mask=cross_attn_cond_mask, 
-                input_concat_cond=input_concat_cond, 
-                global_embed=global_embed, 
-                prepend_cond=prepend_cond, 
+                cross_attn_cond=cross_attn_cond, #kelsey add
+                cross_attn_cond_mask=cross_attn_cond_mask, #kelsey add
+                input_concat_cond=input_concat_cond, #kelsey add
+                global_embed=global_embed,#kelsey add
+                prepend_cond=prepend_cond,#kelsey add
                 prepend_cond_mask=prepend_cond_mask,
+                per_pos_cond=per_pos_cond,#kelsey add
                 mask=mask,
                 return_info=return_info,
                 **kwargs

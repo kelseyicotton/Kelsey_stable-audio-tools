@@ -816,7 +816,7 @@ class ContinuousTransformer(nn.Module):
         x = self.project_in(x)
 
         if per_pos_cond is not None: #kelsey add
-            # per_pos_cond: [B, T_cond, 2*dim] — per-position scale+shift
+            # per_pos_cond: [B, T_cond, D] — D is 2*dim (scale+shift) or dim (scale-only)
             # Interpolate to match audio sequence length if needed
             T = x.shape[1]
             if per_pos_cond.shape[1] != T:
@@ -828,8 +828,13 @@ class ContinuousTransformer(nn.Module):
                 ).permute(0, 2, 1).to(x.dtype)
             else:
                 film = per_pos_cond.to(x.dtype)
-            scale, shift = film.chunk(2, dim=-1)  # each [B, T, dim]
-            x = x * (1 + scale) + shift
+            if film.shape[-1] == 2 * x.shape[-1]:
+                # Scale+shift FiLM
+                scale, shift = film.chunk(2, dim=-1)  # each [B, T, dim]
+                x = x * (1 + scale) + shift
+            else:
+                # Scale-only FiLM: softplus ensures positive gain (amplitude-like)
+                x = x * F.softplus(1.0 + film)
 
         if prepend_embeds is not None:
             prepend_length, prepend_dim = prepend_embeds.shape[1:]
